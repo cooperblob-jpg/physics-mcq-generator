@@ -38,7 +38,7 @@ if st.button("Check Answer"):
     if user_choice == ans:
         st.success("Correct! You spotted the unit conversion.")
     else:
-        st.error(f"Not quite. Remember: $E = \\frac{hc}{\\lambda}$ and $\\lambda$ must be in meters.")
+        st.error(r"Not quite. Remember: $E = \frac{hc}{\lambda}$ and $\lambda$ must be in meters.")
 
 if st.button("Generate New Question"):
     st.session_state.current_q = generate_photon_q()
