@@ -206,15 +206,20 @@ def q_graph_ep():
     random.shuffle(opts)
     return "Which graph correctly represents Gravitational Potential Energy ($E_p$) versus displacement ($s$) for a simple pendulum?", opts, correct
 
-# --- 2. INTERFACE & LOGIC ---
+# --- 2. UI LOGIC ---
 
-st.set_page_config(page_title="AQA Physics Master", layout="centered")
-st.title("⚛️ AQA Physics Paper 1 Practice")
+st.set_page_config(page_title="AQA Physics Trainer", layout="centered")
+st.title("⚛️ AQA Physics Paper 1: Infinite Trainer")
 
+# ULTIMATE FORMATTER: Handles rounding to 3 sig figs and prevents TypeErrors
 def safe_format(x):
     if isinstance(x, (int, float)):
+        if x == 0: return "0"
+        # Scientific notation for very small/large magnitudes
         if abs(x) > 1000 or (0 < abs(x) < 0.01):
             return f"{x:.2e}"
+        # Standard rounding to 3 significant figures
+        return f"{float(f'{x:.3g}'):g}"
     return str(x)
 
 topics = [
@@ -226,51 +231,49 @@ topics = [
     q_wire_parallel, q_battery_discharge, q_putty_resistors, q_shm_phase, q_shm_ke, q_graph_ep
 ]
 
-# Initialization
 if 'current_q' not in st.session_state:
     st.session_state.current_q = random.choice(topics)()
     st.session_state.start_time = time.time()
     st.session_state.answered = False
-    st.session_state.q_index = 0 # To force radio button reset
+    st.session_state.q_key = 0 
 
 text, opts, correct = st.session_state.current_q
 
 st.subheader("Question:")
 st.write(text)
 
-# Force reset on each new question by using a dynamic key
-user_choice = st.radio("Select Answer:", opts, format_func=safe_format, key=f"q_{st.session_state.q_index}")
+# Dynamic key ensure selection is cleared on "Next"
+user_choice = st.radio("Select Answer:", opts, format_func=safe_format, key=f"rad_{st.session_state.q_key}")
 
-feedback_container = st.empty()
+feedback = st.empty()
 
-col1, col2 = st.columns(2)
-with col1:
+c1, c2 = st.columns(2)
+with c1:
     if st.button("Check Answer"):
         st.session_state.answered = True
 
 if st.session_state.answered:
     if user_choice == correct:
-        feedback_container.success("🎯 Correct!")
+        feedback.success("🎯 Correct!")
     else:
-        feedback_container.error(f"❌ Incorrect. The answer was: {safe_format(correct)}")
+        feedback.error(f"❌ Incorrect. Answer: {safe_format(correct)}")
 
-with col2:
+with c2:
     if st.button("Next Question"):
         st.session_state.current_q = random.choice(topics)()
         st.session_state.start_time = time.time()
         st.session_state.answered = False
-        st.session_state.q_index += 1 # Changes key, resetting radio
+        st.session_state.q_key += 1 
         st.rerun()
 
 st.divider()
 
-timer_placeholder = st.empty()
-elapsed = time.time() - st.session_state.start_time
-seconds_left = 60 - int(elapsed)
-
-if seconds_left > 0:
-    timer_placeholder.metric("Time Remaining", f"{seconds_left}s")
+# Timer Display
+timer = st.empty()
+left = 60 - int(time.time() - st.session_state.start_time)
+if left > 0:
+    timer.metric("Time Remaining", f"{left}s")
     time.sleep(1)
     st.rerun()
 else:
-    timer_placeholder.error("⏰ Time's up! Speed is key for Section C.")
+    timer.error("⏰ Time's up! Speed is essential for AQA Paper 1.")
