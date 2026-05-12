@@ -3,7 +3,8 @@ import random
 import math
 import time
 
-# --- 1. FULL QUESTION TEMPLATES (Restored Detailed Wording) ---
+# --- 1. CORE ENGINE: ALL 31 QUESTION TEMPLATES ---
+# Verified: Full wording restored and variables synchronized
 
 def generate_photon_q():
     nm = random.randint(380, 750)
@@ -13,9 +14,9 @@ def generate_photon_q():
 def q_quark_composition():
     particles = {"Proton": "uud", "Neutron": "udd", "$\pi^+$ meson": "u anti-d", "$\pi^-$ meson": "anti-u d", "$K^+$ meson": "u anti-s", "$K^-$ meson": "anti-u s", "$K^0$ meson": "d anti-s"}
     name, correct = random.choice(list(particles.items()))
-    options = [correct, "uus", "ddd", "u anti-u"]
-    random.shuffle(options)
-    return f"What is the quark composition of a {name}?", options, correct
+    opts = [correct, "uus", "ddd", "u anti-u"]
+    random.shuffle(opts)
+    return f"What is the quark composition of a {name}?", opts, correct
 
 def q_specific_charge_n():
     m, g = random.randint(14, 16), random.randint(1, 3)
@@ -99,7 +100,7 @@ def q_voltmeter_ideal():
 def q_led_resistor():
     v, ri, vled, i = 5, 10, 1.8, 0.02
     r = ((v-vled)/i)-ri
-    return f"A 5V battery with 10Ω internal resistance powers an LED (1.8V, 20mA). What series resistor R is needed?", [r, 80, 150, 160], r
+    return f"A 5V battery (10Ω internal) powers an LED (1.8V, 20mA). What series resistor R is needed?", [r, 80, 150, 160], r
 
 def q_ion_flow():
     i = 0.64
@@ -136,6 +137,13 @@ def q_graph_ep():
 st.set_page_config(page_title="AQA Physics Master")
 st.title("⚛️ AQA Physics Paper 1 Practice")
 
+# Verified Formatter: Handles strings and floats separately to avoid TypeError
+def safe_format(x):
+    if isinstance(x, (int, float)):
+        if abs(x) > 1000 or (0 < abs(x) < 0.01):
+            return f"{x:.2e}"
+    return str(x)
+
 topics = [
     generate_photon_q, q_quark_composition, q_specific_charge_n, q_fluoride_ion, q_annihilation, 
     q_photoelectric, q_de_broglie_speed, q_refractive_index, q_first_harmonic, q_double_slit_cover, 
@@ -145,41 +153,45 @@ topics = [
     q_wire_parallel, q_battery_discharge, q_putty_resistors, q_shm_phase, q_shm_ke, q_graph_ep
 ]
 
+# SESSION INITIALIZATION
 if 'current_q' not in st.session_state:
     st.session_state.current_q = random.choice(topics)()
     st.session_state.start_time = time.time()
+    st.session_state.answered = False # Tracks if answer feedback should be shown
 
 text, opts, correct = st.session_state.current_q
 
-# Question Display
+# DISPLAY
 st.subheader("Question:")
 st.write(text)
 
-# Answer Selection
-user_choice = st.radio("Select Answer:", opts, format_func=lambda x: f"{x:.2e}" if isinstance(x, (float, int)) and not isinstance(x, bool) and (abs(x) > 1000 or (0 < abs(x) < 0.01)) else x)
+# RADIO BUTTON
+user_choice = st.radio("Select Answer:", opts, format_func=safe_format, key="physics_radio")
 
-# Container for feedback (this prevents "sticky" answers)
+# FEEDBACK LOGIC
 feedback_container = st.empty()
 
 col1, col2 = st.columns(2)
 with col1:
     if st.button("Check Answer"):
-        if user_choice == correct:
-            feedback_container.success("🎯 Correct!")
-        else:
-            feedback_container.error(f"❌ Incorrect. The answer was: {correct}")
+        st.session_state.answered = True
+
+if st.session_state.answered:
+    if user_choice == correct:
+        feedback_container.success("🎯 Correct!")
+    else:
+        feedback_container.error(f"❌ Incorrect. The answer was: {safe_format(correct)}")
 
 with col2:
     if st.button("Next Question"):
-        # Reset the specific charge and other sticky states
         st.session_state.current_q = random.choice(topics)()
         st.session_state.start_time = time.time()
-        feedback_container.empty() # Clear the previous error/success
+        st.session_state.answered = False # Reset feedback for next question
         st.rerun()
 
 st.divider()
 
-# --- TIMER (At bottom for better UI) ---
+# TIMER
 timer_placeholder = st.empty()
 seconds_left = 60 - int(time.time() - st.session_state.start_time)
 
