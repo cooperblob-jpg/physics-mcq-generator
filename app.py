@@ -3,7 +3,7 @@ import random
 import math
 import time
 
-# --- 1. CORE ENGINE: ALL 31 QUESTION TEMPLATES ---
+# --- 1. CORE ENGINE: ALL QUESTION TEMPLATES ---
 
 def generate_photon_q():
     nm = random.randint(380, 750)
@@ -206,7 +206,48 @@ def q_graph_ep():
     random.shuffle(opts)
     return "Which graph correctly represents Gravitational Potential Energy ($E_p$) versus displacement ($s$) for a simple pendulum?", opts, correct
 
-# --- 2. UI & REFINED NOTATION ENGINE ---
+# --- EXAM PAPER TYPES ---
+
+def q_beta_plus_feynman():
+    correct = "X: $W^+$, Y: $\\nu_e$"
+    opts = [correct, "X: $W^+$, Y: $\\bar{\\nu}_e$", "X: $W^-$, Y: $\\nu_e$", "X: $W^-$, Y: $\\bar{\\nu}_e$"]
+    random.shuffle(opts)
+    return "In the Feynman diagram for beta plus ($\\beta^+$) decay ($p \\to n$), which row correctly identifies the exchange particle X and the emitted lepton Y?", opts, correct
+
+def q_photoelectric_work_func():
+    freq, phi, h = 2.0e15, 4.6e-19, 6.63e-34
+    correct = (h * freq) - phi
+    opts = [correct, 3.1e-19, 1.8e-18, 0]
+    random.shuffle(opts)
+    return f"Light of frequency $2.0 \\times 10^{{15}}$ Hz is incident on a metal surface ($W_0 = 4.6 \\times 10^{{-19}}$ J). Calculate the max KE of photoelectrons.", opts, correct
+
+def q_spring_cut_accel():
+    m1, m2 = 0.20, 0.10
+    correct = (m2 * 9.81) / m1
+    opts = [correct, 9.81, 4.9, 3.3]
+    random.shuffle(opts)
+    return f"A {m1}kg mass is suspended from a spring with a {m2}kg mass below it. What is the upward acceleration of the {m1}kg mass at the instant the thread is cut?", opts, correct
+
+def q_ev_power_variation():
+    correct = "It increases linearly from zero."
+    opts = [correct, "It stays constant.", "It increases non-linearly from zero.", "It increases then decreases."]
+    random.shuffle(opts)
+    return "An electric vehicle motor produces a constant driving force from rest. How does the power developed vary with time?", opts, correct
+
+def q_wire_stress_range():
+    force, area_mm2 = 50, 1.0
+    correct = "$10^6$ and $10^9$"
+    opts = [correct, "$10^0$ and $10^3$", "$10^3$ and $10^6$", "$10^9$ and $10^{12}$"]
+    random.shuffle(opts)
+    return f"A load of {force}N is suspended from a wire ($1.0 mm^2$). The stress in Pa is between:", opts, correct
+
+def q_series_wire_comparison():
+    correct = "resistivity and current"
+    opts = [correct, "pd and resistivity", "current and resistance", "resistance and pd"]
+    random.shuffle(opts)
+    return "Two wires P and Q (same material, different diameter) are in series. Which quantities are identical for both?", opts, correct
+
+# --- 2. INTERFACE & NOTATION ENGINE ---
 
 st.set_page_config(page_title="AQA Physics Trainer", layout="centered")
 st.title("⚛️ AQA Physics Paper 1: Infinite Trainer")
@@ -214,11 +255,10 @@ st.title("⚛️ AQA Physics Paper 1: Infinite Trainer")
 def safe_format(x):
     if isinstance(x, (int, float)):
         if x == 0: return "0"
-        # Determine 3 Significant Figures
         if abs(x) > 1000 or (0 < abs(x) < 0.01):
             base, exp = f"{x:.2e}".split('e')
-            # LaTeX wrap for x10 notation
-            return f"${float(base):.2f} \\times 10^{{{int(exp)}}}$"
+            # LaTeX wrap with standard x10 notation
+            return f"${float(base):g} \\times 10^{{{int(exp)}}}$"
         else:
             return f"{float(f'{x:.3g}'):g}"
     return str(x)
@@ -229,10 +269,11 @@ topics = [
     q_ultrasound_xray, q_diffraction_grating, q_rocket_thrust, q_projectile_time, q_projectile_dist, 
     q_resultant_force, q_graph_features, q_young_modulus_theory, q_wire_extension_ratio, q_spring_extension, 
     q_momentum_collision, q_voltmeter_ideal, q_led_resistor, q_ion_flow, q_parallel_resistors, 
-    q_wire_parallel, q_battery_discharge, q_putty_resistors, q_shm_phase, q_shm_ke, q_graph_ep
+    q_wire_parallel, q_battery_discharge, q_putty_resistors, q_shm_phase, q_shm_ke, q_graph_ep,
+    q_beta_plus_feynman, q_photoelectric_work_func, q_spring_cut_accel, q_ev_power_variation, 
+    q_wire_stress_range, q_series_wire_comparison
 ]
 
-# PERSISTENCE ENGINE: Only resets on explicit user choice
 if 'current_q' not in st.session_state:
     st.session_state.current_q = random.choice(topics)()
     st.session_state.start_time = time.time()
@@ -244,8 +285,8 @@ text, opts, correct = st.session_state.current_q
 st.subheader("Question:")
 st.markdown(text)
 
-# LaTeX rendering enabled for clean notation
-user_choice = st.radio("Select Answer:", opts, format_func=safe_format, key=f"q_{st.session_state.q_idx}")
+# Radio logic with unique key based on index to ensure reset on "Next"
+user_choice = st.radio("Select Answer:", opts, format_func=safe_format, key=f"rad_{st.session_state.q_idx}")
 
 feedback = st.empty()
 
@@ -270,12 +311,14 @@ with c2:
 
 st.divider()
 
-# REFRESH-SAFE TIMER: Does not trigger a question shuffle
-timer = st.empty()
-rem = 60 - int(time.time() - st.session_state.start_time)
+# Timer Logic: Refresh only updates the UI element, not the session state question
+timer_placeholder = st.empty()
+elapsed = time.time() - st.session_state.start_time
+rem = 60 - int(elapsed)
+
 if rem > 0:
-    timer.metric("Time Remaining", f"{rem}s")
+    timer_placeholder.metric("Time Remaining", f"{rem}s")
     time.sleep(1)
     st.rerun()
 else:
-    timer.error("⏰ Time's up! Speed and accuracy are vital for Paper 1.")
+    timer_placeholder.error("⏰ Time's up! Speed and accuracy are vital.")
