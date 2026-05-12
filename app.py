@@ -206,20 +206,21 @@ def q_graph_ep():
     random.shuffle(opts)
     return "Which graph correctly represents Gravitational Potential Energy ($E_p$) versus displacement ($s$) for a simple pendulum?", opts, correct
 
-# --- 2. UI LOGIC ---
+# --- 2. UI & REFINED NOTATION ENGINE ---
 
 st.set_page_config(page_title="AQA Physics Trainer", layout="centered")
 st.title("⚛️ AQA Physics Paper 1: Infinite Trainer")
 
-# ULTIMATE FORMATTER: Handles rounding to 3 sig figs and prevents TypeErrors
 def safe_format(x):
     if isinstance(x, (int, float)):
         if x == 0: return "0"
-        # Scientific notation for very small/large magnitudes
+        # Determine 3 Significant Figures
         if abs(x) > 1000 or (0 < abs(x) < 0.01):
-            return f"{x:.2e}"
-        # Standard rounding to 3 significant figures
-        return f"{float(f'{x:.3g}'):g}"
+            base, exp = f"{x:.2e}".split('e')
+            # LaTeX wrap for x10 notation
+            return f"${float(base):.2f} \\times 10^{{{int(exp)}}}$"
+        else:
+            return f"{float(f'{x:.3g}'):g}"
     return str(x)
 
 topics = [
@@ -231,19 +232,20 @@ topics = [
     q_wire_parallel, q_battery_discharge, q_putty_resistors, q_shm_phase, q_shm_ke, q_graph_ep
 ]
 
+# PERSISTENCE ENGINE: Only resets on explicit user choice
 if 'current_q' not in st.session_state:
     st.session_state.current_q = random.choice(topics)()
     st.session_state.start_time = time.time()
     st.session_state.answered = False
-    st.session_state.q_key = 0 
+    st.session_state.q_idx = 0 
 
 text, opts, correct = st.session_state.current_q
 
 st.subheader("Question:")
-st.write(text)
+st.markdown(text)
 
-# Dynamic key ensure selection is cleared on "Next"
-user_choice = st.radio("Select Answer:", opts, format_func=safe_format, key=f"rad_{st.session_state.q_key}")
+# LaTeX rendering enabled for clean notation
+user_choice = st.radio("Select Answer:", opts, format_func=safe_format, key=f"q_{st.session_state.q_idx}")
 
 feedback = st.empty()
 
@@ -263,17 +265,17 @@ with c2:
         st.session_state.current_q = random.choice(topics)()
         st.session_state.start_time = time.time()
         st.session_state.answered = False
-        st.session_state.q_key += 1 
+        st.session_state.q_idx += 1 
         st.rerun()
 
 st.divider()
 
-# Timer Display
+# REFRESH-SAFE TIMER: Does not trigger a question shuffle
 timer = st.empty()
-left = 60 - int(time.time() - st.session_state.start_time)
-if left > 0:
-    timer.metric("Time Remaining", f"{left}s")
+rem = 60 - int(time.time() - st.session_state.start_time)
+if rem > 0:
+    timer.metric("Time Remaining", f"{rem}s")
     time.sleep(1)
     st.rerun()
 else:
-    timer.error("⏰ Time's up! Speed is essential for AQA Paper 1.")
+    timer.error("⏰ Time's up! Speed and accuracy are vital for Paper 1.")
